@@ -255,4 +255,4 @@ def pdf_to_tagged_text(result: PdfExtractResult) -> str:
                 else:
                     lines.append(f"[PARA] {para}")
 
-    return "\n".join(lines)
+    return "\n\n".join(lines)

@@ -200,4 +200,4 @@ def paragraphs_to_tagged_text(paragraphs: list[ExtractedParagraph]) -> str:
             lines.append(f"[ITALIC] {p.text}")
         else:
             lines.append(f"[PARA] {p.text}")
-    return "\n".join(lines)
+    return "\n\n".join(lines)
