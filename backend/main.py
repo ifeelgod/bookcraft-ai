@@ -49,6 +49,9 @@ app.add_middleware(
 # Register all API routes under /api prefix
 app.include_router(api_router, prefix="/api")
 
+# Ensure outputs directory exists before mounting
+Path(settings.OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+
 # Serve the outputs directory statically so PDFs can be downloaded/previewed
 app.mount("/api/download", StaticFiles(directory=settings.OUTPUT_DIR), name="outputs")
 
