@@ -60,7 +60,8 @@ export default function HomePage() {
         </div>
 
         <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-          From manuscript to{' '}
+          From manuscript to
+          <br />
           <span className="text-brand-600">publication-ready</span>
           <br />
           in minutes.
