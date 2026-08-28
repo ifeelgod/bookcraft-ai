@@ -65,7 +65,7 @@ async def parse_document(
         raise CorruptFileError(f"The uploaded file '{path.name}' is empty.")
 
     try:
-        if file_type == "docx":
+        if file_type == "docx" or file_type == "doc":
             ast = await _parse_docx(file_path, job_id)
         elif file_type == "pdf":
             ast = await _parse_pdf(file_path, job_id)
@@ -74,7 +74,7 @@ async def parse_document(
         else:
             raise UnsupportedFormatError(
                 f"File type '.{file_type}' is not supported. "
-                "Please upload a .docx, .pdf, or .md file."
+                "Please upload a .doc, .docx, .pdf, or .md file."
             )
     except (ParseError, UnsupportedFormatError):
         raise

@@ -23,26 +23,26 @@ router = APIRouter()
 
 ALLOWED_MIME_TYPES = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-    "application/msword": "docx",
+    "application/msword": "doc",
     "application/pdf": "pdf",
     "text/markdown": "md",
 }
 
-ALLOWED_EXTENSIONS = {".docx", ".pdf", ".md"}
+ALLOWED_EXTENSIONS = {".doc", ".docx", ".pdf", ".md"}
 
 # ── Friendly error messages for known error classes ───────────────────────────
 _ERROR_HINTS = {
     "CorruptFileError": "The file appears to be corrupted or password-protected.",
-    "UnsupportedFormatError": "Only .docx, .pdf, and .md files are supported.",
+    "UnsupportedFormatError": "Only .doc, .docx, .pdf, and .md files are supported.",
     "ParseError": "The document could not be parsed. Please check the file and try again.",
 }
 
 
 @router.post(
     "/upload",
-    summary="Upload a .docx, .pdf, or .md file",
+    summary="Upload a .doc, .docx, .pdf, or .md file",
     description=(
-        "Accepts a Word (.docx), PDF, or Markdown (.md) file, saves it to disk, and returns a job_id "
+        "Accepts a Word (.doc, .docx), PDF, or Markdown (.md) file, saves it to disk, and returns a job_id "
         "to poll via GET /api/status/{job_id}. When status is 'completed', retrieve "
         "the parsed DocumentAST via GET /api/ast/{job_id}."
     ),
@@ -50,7 +50,7 @@ _ERROR_HINTS = {
 )
 async def upload_file(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(..., description="The manuscript file (.docx, .pdf, .md)"),
+    file: UploadFile = File(..., description="The manuscript file (.doc, .docx, .pdf, .md)"),
 ):
     # ── Validate extension ────────────────────────────────────────────────────
     suffix = Path(file.filename or "").suffix.lower()
@@ -59,8 +59,8 @@ async def upload_file(
             status_code=415,
             detail={
                 "error": "unsupported_file_type",
-                "message": f"'{suffix}' is not supported. Please upload a .docx, .pdf, or .md file.",
-                "allowed": [".docx", ".pdf", ".md"],
+                "message": f"'{suffix}' is not supported. Please upload a .doc, .docx, .pdf, or .md file.",
+                "allowed": [".doc", ".docx", ".pdf", ".md"],
             },
         )
 

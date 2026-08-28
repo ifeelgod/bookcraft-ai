@@ -60,6 +60,7 @@ export default function UploadPage() {
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     accept: {
+      'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/pdf': ['.pdf'],
       'text/markdown': ['.md'],
@@ -78,7 +79,8 @@ export default function UploadPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Upload Manuscript</h1>
           <p className="text-gray-500 mt-2">
-            Upload a <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.docx</code>,{' '}
+            Upload a <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.doc</code>,{' '}
+            <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.docx</code>,{' '}
             <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.pdf</code>, or{' '}
             <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.md</code> file to get started.
           </p>
@@ -98,16 +100,16 @@ export default function UploadPage() {
           <input {...getInputProps()} />
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           {isDragActive && !isDragReject && (
-            <p className="text-brand-600 font-semibold">Drop your file here…</p>
+            <p className="text-brand-600 font-semibold">Drop your file here.</p>
           )}
           {isDragReject && (
-            <p className="text-red-600 font-semibold">Only .docx, .pdf, and .md files are accepted.</p>
+            <p className="text-red-600 font-semibold">Only .doc, .docx, .pdf, and .md files are accepted.</p>
           )}
           {!isDragActive && (
             <>
               <p className="text-gray-700 font-medium">Drag &amp; drop your manuscript here</p>
               <p className="text-sm text-gray-500 mt-1">or click to browse</p>
-              <p className="text-xs text-gray-400 mt-3">.docx · .pdf · .md · Max 50 MB</p>
+              <p className="text-xs text-gray-400 mt-3">.doc · .docx · .pdf · .md · Max 50 MB</p>
             </>
           )}
         </div>

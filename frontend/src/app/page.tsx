@@ -13,7 +13,7 @@ const features = [
     icon: Upload,
     title: 'Upload Your Manuscript',
     description:
-      'Import .docx or PDF files. BookCraft AI parses your document and builds a structured AST automatically.',
+      'Import .doc, .docx, .md, or PDF files. BookCraft AI parses your document and builds a structured AST automatically.',
   },
   {
     icon: Wand2,

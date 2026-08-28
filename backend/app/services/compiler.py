@@ -77,9 +77,10 @@ async def compile_pdf(
 
     update_job(job_id, progress=60, message="Compiling PDF via Typst engine…")
 
+    import asyncio
     try:
-        # Run typst compilation
-        typst.compile(str(typst_path), output=str(pdf_path))
+        # Run typst compilation in a thread to avoid blocking the event loop
+        await asyncio.to_thread(typst.compile, str(typst_path), output=str(pdf_path))
     except Exception as e:
         logger.error(f"Typst compilation failed: {e}")
         raise RuntimeError(f"Typst engine failed: {e}")
