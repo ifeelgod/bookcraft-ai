@@ -279,7 +279,7 @@ def _heuristic_pdf_parse(result, job_id: str) -> DocumentAST:
 # ==========================================
 
 async def _parse_md(file_path: str, job_id: str) -> DocumentAST:
-    "\"\"Parse a Markdown document using extractor + AI normalizer."\"\"
+    """Parse a Markdown document using extractor + AI normalizer."""
     update_job(job_id, progress=10, message="Reading Markdown file.")
 
     try:
@@ -315,7 +315,7 @@ async def _parse_md(file_path: str, job_id: str) -> DocumentAST:
         return _heuristic_md_parse(result, job_id)
 
 def _heuristic_md_parse(result, job_id: str) -> DocumentAST:
-    "\"\"Fallback parser for Markdown."\"\"
+    """Fallback parser for Markdown."""
     update_job(job_id, progress=75, message="Running heuristic parser.")
 
     chapters = []
