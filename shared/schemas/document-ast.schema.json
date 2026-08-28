@@ -1,0 +1,598 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bookcraftai.dev/schemas/document-ast.json",
+  "title": "DocumentAST",
+  "description": "Unified Abstract Syntax Tree representing a complete book document for BookCraft AI",
+  "type": "object",
+  "required": ["metadata", "frontMatter", "chapters"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Book-level metadata",
+      "required": ["title", "author", "genre", "trimSize"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Full book title",
+          "minLength": 1
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Optional book subtitle"
+        },
+        "author": {
+          "type": "string",
+          "description": "Primary author name",
+          "minLength": 1
+        },
+        "coAuthors": {
+          "type": "array",
+          "description": "Optional list of co-authors",
+          "items": { "type": "string" }
+        },
+        "genre": {
+          "type": "string",
+          "description": "Book genre or category",
+          "enum": [
+            "fiction",
+            "non-fiction",
+            "biography",
+            "self-help",
+            "business",
+            "academic",
+            "children",
+            "poetry",
+            "anthology",
+            "technical",
+            "other"
+          ]
+        },
+        "trimSize": {
+          "type": "string",
+          "description": "Physical trim size of the printed book",
+          "enum": ["5.5x8.5", "6x9", "8.5x11"]
+        },
+        "isbn": {
+          "type": "string",
+          "description": "ISBN-13 identifier",
+          "pattern": "^97[89]-?\\d{1,5}-?\\d{1,7}-?\\d{1,7}-?\\d$"
+        },
+        "publisher": {
+          "type": "string",
+          "description": "Publisher name"
+        },
+        "publishedYear": {
+          "type": "integer",
+          "description": "Year of publication",
+          "minimum": 1000,
+          "maximum": 9999
+        },
+        "edition": {
+          "type": "string",
+          "description": "Edition number or label, e.g. '2nd Edition'"
+        },
+        "language": {
+          "type": "string",
+          "description": "BCP-47 language code",
+          "default": "en"
+        },
+        "keywords": {
+          "type": "array",
+          "description": "Searchable keywords",
+          "items": { "type": "string" }
+        },
+        "coverImageUrl": {
+          "type": "string",
+          "description": "URL or relative path to cover image",
+          "format": "uri-reference"
+        }
+      },
+      "additionalProperties": false
+    },
+    "frontMatter": {
+      "type": "object",
+      "description": "Preliminary pages appearing before the main content",
+      "properties": {
+        "titlePage": {
+          "type": "object",
+          "description": "Title page configuration",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "displayTitle": { "type": "string" },
+            "displaySubtitle": { "type": "string" },
+            "displayAuthor": { "type": "string" },
+            "displayPublisher": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "copyright": {
+          "type": "object",
+          "description": "Copyright page configuration",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "year": { "type": "integer" },
+            "holder": { "type": "string" },
+            "statement": {
+              "type": "string",
+              "description": "Full copyright statement text"
+            },
+            "rightsReserved": { "type": "boolean", "default": true },
+            "printedIn": {
+              "type": "string",
+              "description": "e.g. 'United States of America'"
+            },
+            "edition": { "type": "string" },
+            "disclaimer": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "tableOfContents": {
+          "type": "object",
+          "description": "Auto-generated Table of Contents configuration",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "title": { "type": "string", "default": "Table of Contents" },
+            "includeSubheadings": { "type": "boolean", "default": false },
+            "maxDepth": {
+              "type": "integer",
+              "description": "Maximum heading depth to include (1=chapters only, 2=include h2, 3=include h3)",
+              "minimum": 1,
+              "maximum": 3,
+              "default": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "dedication": {
+          "type": "object",
+          "description": "Dedication page configuration",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "text": {
+              "type": "string",
+              "description": "Dedication text content"
+            }
+          },
+          "additionalProperties": false
+        },
+        "foreword": {
+          "type": "object",
+          "description": "Foreword page",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "author": { "type": "string" },
+            "content": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/ContentBlock" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "preface": {
+          "type": "object",
+          "description": "Preface page",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "content": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/ContentBlock" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "acknowledgements": {
+          "type": "object",
+          "description": "Acknowledgements page",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "content": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/ContentBlock" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "chapters": {
+      "type": "array",
+      "description": "Ordered list of book chapters",
+      "items": { "$ref": "#/definitions/Chapter" },
+      "minItems": 0
+    },
+    "backMatter": {
+      "type": "object",
+      "description": "Pages appearing after the main content",
+      "properties": {
+        "appendices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "title", "content"],
+            "properties": {
+              "label": { "type": "string", "description": "e.g. 'Appendix A'" },
+              "title": { "type": "string" },
+              "content": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/ContentBlock" }
+              }
+            }
+          }
+        },
+        "glossary": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["term", "definition"],
+            "properties": {
+              "term": { "type": "string" },
+              "definition": { "type": "string" }
+            }
+          }
+        },
+        "bibliography": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "citation"],
+            "properties": {
+              "id": { "type": "string" },
+              "citation": { "type": "string" },
+              "url": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "index": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["term", "pages"],
+                "properties": {
+                  "term": { "type": "string" },
+                  "pages": {
+                    "type": "array",
+                    "items": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "aboutTheAuthor": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "content": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/ContentBlock" }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "compilationSettings": {
+      "type": "object",
+      "description": "PDF compilation and styling preferences",
+      "properties": {
+        "fontFamily": {
+          "type": "string",
+          "enum": ["Garamond", "Times New Roman", "Georgia", "Palatino", "Helvetica", "Arial"],
+          "default": "Garamond"
+        },
+        "fontSize": {
+          "type": "integer",
+          "description": "Base body font size in points",
+          "minimum": 8,
+          "maximum": 16,
+          "default": 11
+        },
+        "lineHeight": {
+          "type": "number",
+          "description": "Line height multiplier",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "default": 1.5
+        },
+        "margins": {
+          "type": "object",
+          "properties": {
+            "top": { "type": "number", "description": "Margin in inches", "default": 1.0 },
+            "bottom": { "type": "number", "description": "Margin in inches", "default": 1.0 },
+            "inner": { "type": "number", "description": "Inner (gutter) margin in inches", "default": 1.25 },
+            "outer": { "type": "number", "description": "Outer margin in inches", "default": 0.75 }
+          }
+        },
+        "chapterStartPage": {
+          "type": "string",
+          "enum": ["any", "recto", "verso"],
+          "description": "Whether chapters start on any page, right (recto), or left (verso)",
+          "default": "recto"
+        },
+        "headerFooter": {
+          "type": "object",
+          "properties": {
+            "showPageNumbers": { "type": "boolean", "default": true },
+            "showChapterTitle": { "type": "boolean", "default": true },
+            "showBookTitle": { "type": "boolean", "default": true }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "Chapter": {
+      "type": "object",
+      "description": "A single book chapter",
+      "required": ["chapterNumber", "title", "content"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique chapter identifier (slug)",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "chapterNumber": {
+          "type": "integer",
+          "description": "Chapter number (1-based)",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string",
+          "description": "Chapter title",
+          "minLength": 1
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Optional chapter subtitle"
+        },
+        "epigraph": {
+          "type": "object",
+          "description": "Opening quote for the chapter",
+          "properties": {
+            "text": { "type": "string" },
+            "attribution": { "type": "string" }
+          },
+          "required": ["text"],
+          "additionalProperties": false
+        },
+        "content": {
+          "type": "array",
+          "description": "Ordered list of content blocks in this chapter",
+          "items": { "$ref": "#/definitions/ContentBlock" },
+          "minItems": 0
+        },
+        "wordCount": {
+          "type": "integer",
+          "description": "Computed word count for this chapter",
+          "minimum": 0
+        },
+        "notes": {
+          "type": "string",
+          "description": "Author notes (not rendered in output)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ContentBlock": {
+      "type": "object",
+      "description": "A single renderable content unit within a chapter or section",
+      "required": ["type"],
+      "discriminator": { "propertyName": "type" },
+      "oneOf": [
+        { "$ref": "#/definitions/ParagraphBlock" },
+        { "$ref": "#/definitions/Heading2Block" },
+        { "$ref": "#/definitions/Heading3Block" },
+        { "$ref": "#/definitions/CalloutBlock" },
+        { "$ref": "#/definitions/PullquoteBlock" },
+        { "$ref": "#/definitions/TableBlock" },
+        { "$ref": "#/definitions/InteractiveFieldBlock" },
+        { "$ref": "#/definitions/ImageBlock" },
+        { "$ref": "#/definitions/PageBreakBlock" },
+        { "$ref": "#/definitions/HorizontalRuleBlock" }
+      ]
+    },
+    "ParagraphBlock": {
+      "type": "object",
+      "description": "Standard body paragraph",
+      "required": ["type", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["paragraph"] },
+        "text": {
+          "type": "string",
+          "description": "Paragraph text content. Supports inline markdown bold/italic."
+        },
+        "indent": {
+          "type": "boolean",
+          "description": "Whether to apply first-line indent (false for first para after heading)",
+          "default": true
+        },
+        "align": {
+          "type": "string",
+          "enum": ["left", "center", "right", "justify"],
+          "default": "justify"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Heading2Block": {
+      "type": "object",
+      "description": "Section heading (H2 level)",
+      "required": ["type", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["heading2"] },
+        "text": { "type": "string" },
+        "numbering": {
+          "type": "boolean",
+          "description": "Whether to auto-number this heading",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Heading3Block": {
+      "type": "object",
+      "description": "Sub-section heading (H3 level)",
+      "required": ["type", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["heading3"] },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "CalloutBlock": {
+      "type": "object",
+      "description": "Highlighted callout box (tip, note, warning, info)",
+      "required": ["type", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["callout"] },
+        "variant": {
+          "type": "string",
+          "enum": ["info", "tip", "warning", "danger", "success"],
+          "default": "info"
+        },
+        "title": { "type": "string", "description": "Optional callout title/label" },
+        "text": { "type": "string", "description": "Callout body text" }
+      },
+      "additionalProperties": false
+    },
+    "PullquoteBlock": {
+      "type": "object",
+      "description": "Large decorative pull quote extracted from text",
+      "required": ["type", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["pullquote"] },
+        "text": { "type": "string", "description": "Quote text" },
+        "attribution": { "type": "string", "description": "Optional attribution (speaker/source)" },
+        "align": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "default": "center"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TableBlock": {
+      "type": "object",
+      "description": "Data table with headers and rows",
+      "required": ["type", "headers", "rows"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["table"] },
+        "caption": { "type": "string", "description": "Table caption displayed above or below the table" },
+        "headers": {
+          "type": "array",
+          "description": "Column header labels",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "rows": {
+          "type": "array",
+          "description": "Table data rows",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "minItems": 1
+        },
+        "columnAlignments": {
+          "type": "array",
+          "description": "Per-column text alignment",
+          "items": {
+            "type": "string",
+            "enum": ["left", "center", "right"]
+          }
+        },
+        "striped": {
+          "type": "boolean",
+          "description": "Whether to render alternating row colors",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "InteractiveFieldBlock": {
+      "type": "object",
+      "description": "Fillable field for workbooks and interactive PDFs",
+      "required": ["type", "fieldType", "label"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["interactive-field"] },
+        "fieldType": {
+          "type": "string",
+          "enum": ["text", "multiline", "checkbox", "radio", "date", "signature"],
+          "description": "Type of interactive PDF form field"
+        },
+        "label": { "type": "string", "description": "Field label displayed to reader" },
+        "placeholder": { "type": "string", "description": "Placeholder hint text" },
+        "required": { "type": "boolean", "default": false },
+        "options": {
+          "type": "array",
+          "description": "Options for radio/checkbox fields",
+          "items": { "type": "string" }
+        },
+        "lines": {
+          "type": "integer",
+          "description": "Number of lines for multiline text fields",
+          "minimum": 1,
+          "default": 3
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImageBlock": {
+      "type": "object",
+      "description": "Embedded image",
+      "required": ["type", "src"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["image"] },
+        "src": { "type": "string", "description": "Image URL or relative path", "format": "uri-reference" },
+        "alt": { "type": "string", "description": "Alt text for accessibility" },
+        "caption": { "type": "string" },
+        "width": { "type": "string", "description": "CSS width value, e.g. '100%' or '3in'" },
+        "align": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "default": "center"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PageBreakBlock": {
+      "type": "object",
+      "description": "Forces a page break in the compiled output",
+      "required": ["type"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["page-break"] }
+      },
+      "additionalProperties": false
+    },
+    "HorizontalRuleBlock": {
+      "type": "object",
+      "description": "Decorative section separator / horizontal rule",
+      "required": ["type"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["horizontal-rule"] },
+        "style": {
+          "type": "string",
+          "enum": ["line", "dots", "asterisks", "ornament"],
+          "default": "line"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

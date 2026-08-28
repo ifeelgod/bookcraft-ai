@@ -1,0 +1,1 @@
+#set page(header: context { let p = counter(page).get().first(); let h = query(heading.where(level: 1)); let h_on_p = h.filter(x => x.location().page() == p); if h_on_p.len() == 0 [HEADER] }); = Hello \n #heading(level:1)[Test]
