@@ -25,23 +25,24 @@ ALLOWED_MIME_TYPES = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     "application/msword": "docx",
     "application/pdf": "pdf",
+    "text/markdown": "md",
 }
 
-ALLOWED_EXTENSIONS = {".docx", ".pdf"}
+ALLOWED_EXTENSIONS = {".docx", ".pdf", ".md"}
 
 # ── Friendly error messages for known error classes ───────────────────────────
 _ERROR_HINTS = {
     "CorruptFileError": "The file appears to be corrupted or password-protected.",
-    "UnsupportedFormatError": "Only .docx and .pdf files are supported.",
+    "UnsupportedFormatError": "Only .docx, .pdf, and .md files are supported.",
     "ParseError": "The document could not be parsed. Please check the file and try again.",
 }
 
 
 @router.post(
     "/upload",
-    summary="Upload a .docx or .pdf file",
+    summary="Upload a .docx, .pdf, or .md file",
     description=(
-        "Accepts a Word (.docx) or PDF file, saves it to disk, and returns a job_id "
+        "Accepts a Word (.docx), PDF, or Markdown (.md) file, saves it to disk, and returns a job_id "
         "to poll via GET /api/status/{job_id}. When status is 'completed', retrieve "
         "the parsed DocumentAST via GET /api/ast/{job_id}."
     ),
@@ -49,7 +50,7 @@ _ERROR_HINTS = {
 )
 async def upload_file(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(..., description="The .docx or .pdf manuscript file"),
+    file: UploadFile = File(..., description="The manuscript file (.docx, .pdf, .md)"),
 ):
     # ── Validate extension ────────────────────────────────────────────────────
     suffix = Path(file.filename or "").suffix.lower()
@@ -58,8 +59,8 @@ async def upload_file(
             status_code=415,
             detail={
                 "error": "unsupported_file_type",
-                "message": f"'{suffix}' is not supported. Please upload a .docx or .pdf file.",
-                "allowed": [".docx", ".pdf"],
+                "message": f"'{suffix}' is not supported. Please upload a .docx, .pdf, or .md file.",
+                "allowed": [".docx", ".pdf", ".md"],
             },
         )
 

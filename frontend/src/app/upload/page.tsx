@@ -62,6 +62,7 @@ export default function UploadPage() {
     accept: {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/pdf': ['.pdf'],
+      'text/markdown': ['.md'],
     },
     maxFiles: 1,
     disabled: state === 'uploading' || state === 'polling',
@@ -77,8 +78,9 @@ export default function UploadPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Upload Manuscript</h1>
           <p className="text-gray-500 mt-2">
-            Upload a <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.docx</code> or{' '}
-            <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.pdf</code> file to get started.
+            Upload a <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.docx</code>,{' '}
+            <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.pdf</code>, or{' '}
+            <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">.md</code> file to get started.
           </p>
         </div>
 
@@ -99,13 +101,13 @@ export default function UploadPage() {
             <p className="text-brand-600 font-semibold">Drop your file here…</p>
           )}
           {isDragReject && (
-            <p className="text-red-600 font-semibold">Only .docx and .pdf files are accepted.</p>
+            <p className="text-red-600 font-semibold">Only .docx, .pdf, and .md files are accepted.</p>
           )}
           {!isDragActive && (
             <>
               <p className="text-gray-700 font-medium">Drag &amp; drop your manuscript here</p>
               <p className="text-sm text-gray-500 mt-1">or click to browse</p>
-              <p className="text-xs text-gray-400 mt-3">.docx · .pdf · Max 50 MB</p>
+              <p className="text-xs text-gray-400 mt-3">.docx · .pdf · .md · Max 50 MB</p>
             </>
           )}
         </div>

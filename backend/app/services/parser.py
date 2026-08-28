@@ -69,10 +69,12 @@ async def parse_document(
             ast = await _parse_docx(file_path, job_id)
         elif file_type == "pdf":
             ast = await _parse_pdf(file_path, job_id)
+        elif file_type == "md" or file_type == "markdown":
+            ast = await _parse_md(file_path, job_id)
         else:
             raise UnsupportedFormatError(
                 f"File type '.{file_type}' is not supported. "
-                "Please upload a .docx or .pdf file."
+                "Please upload a .docx, .pdf, or .md file."
             )
     except (ParseError, UnsupportedFormatError):
         raise
@@ -269,5 +271,93 @@ def _heuristic_pdf_parse(result, job_id: str) -> DocumentAST:
         ),
         front_matter=FrontMatter(),
         chapters=[Chapter(chapter_number=1, title=result.title, content=blocks)],
+        compilation_settings=CompilationSettings(),
+    )
+
+# ==========================================
+# MARKDOWN
+# ==========================================
+
+async def _parse_md(file_path: str, job_id: str) -> DocumentAST:
+    "\"\"Parse a Markdown document using extractor + AI normalizer."\"\"
+    update_job(job_id, progress=10, message="Reading Markdown file.")
+
+    try:
+        from app.services.extractors.md_extractor import extract_md, md_to_tagged_text
+        result = extract_md(file_path)
+    except Exception as e:
+        raise CorruptFileError(f"Could not open the Markdown file. Detail: {e}")
+
+    if not result.raw_text.strip():
+        raise ParseError("The markdown document is empty.")
+
+    update_job(job_id, progress=20, message="Extracted markdown text. Starting AI analysis.")
+
+    tagged = md_to_tagged_text(result)
+
+    try:
+        from app.services.ai_normalizer import normalize_with_ai
+        from app.core.config import settings
+
+        if not settings.OPENROUTER_API_KEY:
+            logger.warning("No OPENROUTER_API_KEY - using heuristic parser for MD.")
+            return _heuristic_md_parse(result, job_id)
+
+        return await normalize_with_ai(
+            tagged_text=tagged,
+            file_name=Path(file_path).name,
+            job_id=job_id,
+            fallback_title=result.title,
+            fallback_author=result.author,
+        )
+    except Exception as e:
+        logger.warning("AI normalization failed: %s - falling back to heuristic MD parser.", e)
+        return _heuristic_md_parse(result, job_id)
+
+def _heuristic_md_parse(result, job_id: str) -> DocumentAST:
+    "\"\"Fallback parser for Markdown."\"\"
+    update_job(job_id, progress=75, message="Running heuristic parser.")
+
+    chapters = []
+    current_chapter = None
+    blocks = []
+    chapter_counter = 0
+
+    for block in result.raw_text.split('\n\n'):
+        block = block.strip()
+        if not block:
+            continue
+            
+        if block.startswith('# '):
+            if current_chapter is not None:
+                current_chapter.content = blocks
+                chapters.append(current_chapter)
+            chapter_counter += 1
+            current_chapter = Chapter(chapter_number=chapter_counter, title=block[2:].strip(), content=[])
+            blocks = []
+        elif block.startswith('## '):
+            blocks.append(Heading2Block(type="heading2", text=block[3:].strip()))
+        elif block.startswith('### '):
+            blocks.append(Heading3Block(type="heading3", text=block[4:].strip()))
+        elif block.startswith('> '):
+            blocks.append(ParagraphBlock(type="paragraph", text=block))
+        else:
+            blocks.append(ParagraphBlock(type="paragraph", text=block))
+            
+    if current_chapter is not None:
+        current_chapter.content = blocks
+        chapters.append(current_chapter)
+    elif blocks:
+        chapters.append(Chapter(chapter_number=1, title=result.title, content=blocks))
+
+    return DocumentAST(
+        metadata=BookMetadata(
+            title=result.title,
+            author=result.author,
+            genre=Genre.other,
+            trim_size=TrimSize.medium,
+        ),
+        front_matter=FrontMatter(),
+        chapters=chapters,
         compilation_settings=CompilationSettings(),
     )
