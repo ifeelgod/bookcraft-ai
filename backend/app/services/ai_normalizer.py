@@ -333,53 +333,110 @@ def _split_into_chapter_texts(
     chapter_titles: list[dict],
 ) -> list[tuple[int, str, str]]:
     """
-    Split tagged text into per-chapter sections.
+    Split tagged text into per-chapter sections based on tags.
     Returns list of (chapter_number, title, chapter_text).
+    (Phase 1 chapter_titles are used as a fallback if heuristics fail)
     """
-    if not chapter_titles:
-        return [(1, "Chapter 1", tagged_text)]
+    lines = tagged_text.split('\n') if tagged_text else []
+    
+    chapters: list[tuple[int, str, str]] = []
+    current_chapter_title = None
+    current_chapter_lines = []
+    chapter_num = 0
+    
+    front_matter_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+            
+        is_heading1 = stripped.startswith("[HEADING1]")
+        is_heading_cand = stripped.startswith("[HEADING_CANDIDATE]")
+        is_bold = stripped.startswith("[BOLD]")
+        
+        is_heading = is_heading1 or is_heading_cand or is_bold
+        
+        text = stripped.replace("[HEADING1]", "").replace("[HEADING_CANDIDATE]", "").replace("[BOLD]", "").replace("[HEADING2]", "").replace("[HEADING3]", "").replace("[PARA]", "").replace("[LIST_ITEM]", "").strip()
+        
+        if not text:
+            if current_chapter_title is not None:
+                current_chapter_lines.append(line)
+            else:
+                front_matter_lines.append(line)
+            continue
+            
+        lower_text = text.lower()
+        is_chapter_kw = lower_text.startswith("chapter ") or lower_text.startswith("module ")
+        
+        # Split condition: HEADING1, or (CANDIDATE/BOLD with chapter keyword), or it's the very first heading.
+        is_chapter = is_heading1 or (is_heading and is_chapter_kw) or (is_heading and current_chapter_title is None and len(text) < 50)
+        
+        if is_chapter:
+            if current_chapter_title is not None:
+                chapters.append((chapter_num, current_chapter_title, "\n".join(current_chapter_lines)))
+            
+            chapter_num += 1
+            current_chapter_title = text
+            # We also include the heading line in the chapter content so AI can parse it
+            current_chapter_lines = [line]
+        else:
+            if current_chapter_title is not None:
+                current_chapter_lines.append(line)
+            else:
+                front_matter_lines.append(line)
+                
+    if current_chapter_title is not None:
+        chapters.append((chapter_num, current_chapter_title, "\n".join(current_chapter_lines)))
+        
+    if len(chapters) <= 1 and chapter_titles:
+        # Heuristics failed to find multiple chapters, but AI Phase 1 found them.
+        # Let's try to split by the AI's chapter titles, searching loosely.
+        import re
+        ai_chapters = []
+        ai_split_points = []
+        for ch in chapter_titles:
+            title = ch.get("title", "")
+            num = ch.get("number", 1)
+            marker = ch.get("start_marker", "")
+            
+            if title:
+                pattern = re.compile(r"\[(?:HEADING1|HEADING_CANDIDATE|BOLD)\]\s*" + re.escape(title[:30]), re.IGNORECASE)
+                m = pattern.search(tagged_text)
+                if m:
+                    ai_split_points.append((m.start(), num, title))
+                    continue
+            
+            if marker:
+                marker_pattern = re.compile(re.escape(marker[:40]), re.IGNORECASE)
+                m2 = marker_pattern.search(tagged_text)
+                if m2:
+                    ai_split_points.append((m2.start(), num, title))
+                    
+        if len(ai_split_points) > 1:
+            ai_split_points.sort(key=lambda x: x[0])
+            for i, (offset, num, title) in enumerate(ai_split_points):
+                end = ai_split_points[i + 1][0] if i + 1 < len(ai_split_points) else len(tagged_text)
+                chapter_text = tagged_text[offset:end].strip()
+                ai_chapters.append((num, title, chapter_text))
+            
+            if ai_split_points[0][0] > 100:
+                front_text = tagged_text[:ai_split_points[0][0]].strip()
+                if front_text:
+                    ai_chapters.insert(0, (0, "__front_matter__", front_text))
+                    
+            return ai_chapters
 
-    results: list[tuple[int, str, str]] = []
-
-    # Build split points by finding start markers in text
-    split_points: list[tuple[int, int, str]] = []  # (char_offset, chapter_num, title)
-
-    for ch in chapter_titles:
-        marker = ch.get("start_marker", "")
-        title = ch.get("title", f"Chapter {ch.get('number', 1)}")
-        num = ch.get("number", 1)
-
-        # Try to find the heading in the tagged text
-        heading_pattern = re.compile(
-            r"\[HEADING1\]\s*" + re.escape(title[:30]),
-            re.IGNORECASE,
-        )
-        m = heading_pattern.search(tagged_text)
-        if m:
-            split_points.append((m.start(), num, title))
-        elif marker:
-            marker_pattern = re.compile(re.escape(marker[:40]), re.IGNORECASE)
-            m2 = marker_pattern.search(tagged_text)
-            if m2:
-                split_points.append((m2.start(), num, title))
-
-    if not split_points:
-        # Could not find split points — single chapter
-        return [(1, chapter_titles[0].get("title", "Chapter 1") if chapter_titles else "Chapter 1", tagged_text)]
-
-    split_points.sort(key=lambda x: x[0])
-
-    for i, (offset, num, title) in enumerate(split_points):
-        end = split_points[i + 1][0] if i + 1 < len(split_points) else len(tagged_text)
-        chapter_text = tagged_text[offset:end].strip()
-        results.append((num, title, chapter_text))
-
-    # Prepend any front-matter text before the first chapter
-    if split_points and split_points[0][0] > 100:
-        front_text = tagged_text[:split_points[0][0]].strip()
-        if front_text:
-            results.insert(0, (0, "__front_matter__", front_text))
-
+    results = []
+    if front_matter_lines:
+        results.append((0, "__front_matter__", "\n".join(front_matter_lines)))
+        
+    if chapters:
+        results.extend(chapters)
+    else:
+        # Fallback to single chapter
+        results.append((1, chapter_titles[0].get("title", "Chapter 1") if chapter_titles else "Chapter 1", tagged_text))
+        
     return results
 
 
@@ -431,12 +488,13 @@ async def normalize_with_ai(
     # ── Phase 2: Split into chapters and parse each ─────────────────────────
     chapter_sections = _split_into_chapter_texts(tagged_text, chapter_titles)
 
-    chapters: list[Chapter] = []
-    front_matter_extra_blocks: list[ContentBlock] = []
-    chapter_counter = 0
-
     total_sections = len([s for s in chapter_sections if s[0] != 0])
     processed = 0
+
+    current_dyn_ch_title = None
+    dyn_chapters: list[Chapter] = []
+    front_matter_extra_blocks: list[ContentBlock] = []
+    chapter_counter = 0
 
     for (ch_num, ch_title, ch_text) in chapter_sections:
         is_front = ch_num == 0 or ch_title == "__front_matter__"
@@ -444,13 +502,15 @@ async def normalize_with_ai(
         # Chunk the chapter text
         chunks = _chunk_text(ch_text)
         all_blocks: list[ContentBlock] = []
+        
+        current_dyn_ch_title = ch_title if not is_front else None
 
         for chunk_idx, chunk in enumerate(chunks):
             pct = 35 + int(((processed + chunk_idx / len(chunks)) / max(total_sections, 1)) * 50)
             update_job(
                 job_id,
                 progress=min(pct, 84),
-                message=f"AI: Parsing {'front matter' if is_front else f'chapter {chapter_counter+1}'} ({chunk_idx+1}/{len(chunks)})…",
+                message=f"AI: Parsing {'front matter' if is_front else f'chapter {chapter_counter+1}'} ({chunk_idx+1}/{len(chunks)})."
             )
 
             try:
@@ -459,11 +519,28 @@ async def normalize_with_ai(
                     chapter_context=ch_title if not is_front else "front matter",
                 )
                 for rb in raw_blocks:
+                    # Check if Phase 2 emitted a new chapter_title for this block
+                    new_ch_title = rb.get("chapter_title")
+                    if new_ch_title and new_ch_title != current_dyn_ch_title and not is_front:
+                        # Finalize the previous chapter and start a new one dynamically
+                        if all_blocks:
+                            word_count = sum(len(b.text.split()) for b in all_blocks if hasattr(b, "text"))
+                            chapter_counter += 1
+                            dyn_chapters.append(Chapter(
+                                id=_slugify(current_dyn_ch_title),
+                                chapter_number=chapter_counter,
+                                title=current_dyn_ch_title,
+                                content=all_blocks,
+                                word_count=word_count,
+                            ))
+                            all_blocks = []
+                        current_dyn_ch_title = new_ch_title
+                    
                     block = _build_content_block(rb)
                     if block is not None:
                         all_blocks.append(block)
             except Exception as e:
-                logger.warning("Phase 2 chunk parse failed: %s — using plain paragraphs", e)
+                logger.warning("Phase 2 chunk parse failed: %s - using plain paragraphs", e)
                 # Graceful fallback: emit each paragraph as-is
                 for para in chunk.split("\n\n"):
                     para = re.sub(r"^\[.*?\]\s*", "", para).strip()
@@ -473,31 +550,46 @@ async def normalize_with_ai(
         if is_front:
             front_matter_extra_blocks = all_blocks
         else:
-            chapter_counter += 1
-            word_count = sum(
-                len(b.text.split())
-                for b in all_blocks
-                if hasattr(b, "text")
-            )
-            chapters.append(Chapter(
-                id=_slugify(ch_title),
-                chapter_number=chapter_counter,
-                title=ch_title,
-                content=all_blocks,
-                word_count=word_count,
-            ))
+            if all_blocks:
+                word_count = sum(len(b.text.split()) for b in all_blocks if hasattr(b, "text"))
+                chapter_counter += 1
+                dyn_chapters.append(Chapter(
+                    id=_slugify(current_dyn_ch_title or f"Chapter {chapter_counter}"),
+                    chapter_number=chapter_counter,
+                    title=current_dyn_ch_title or f"Chapter {chapter_counter}",
+                    content=all_blocks,
+                    word_count=word_count,
+                ))
             processed += 1
 
-    # ── If no chapters were split, treat whole thing as one chapter ──────────
+    chapters = dyn_chapters
+
     if not chapters and tagged_text:
         update_job(job_id, progress=60, message="AI: Parsing full document as single chapter…")
         chunks = _chunk_text(tagged_text)
         all_blocks: list[ContentBlock] = []
+        current_dyn_ch_title = title
+        
         for i, chunk in enumerate(chunks):
             update_job(job_id, progress=60 + int((i / len(chunks)) * 25), message=f"Parsing chunk {i+1}/{len(chunks)}…")
             try:
-                raw_blocks = await _phase2_parse_chunk(chunk, chapter_context=title)
+                raw_blocks = await _phase2_parse_chunk(chunk, chapter_context=current_dyn_ch_title)
                 for rb in raw_blocks:
+                    new_ch_title = rb.get("chapter_title")
+                    if new_ch_title and new_ch_title != current_dyn_ch_title:
+                        if all_blocks:
+                            word_count = sum(len(b.text.split()) for b in all_blocks if hasattr(b, "text"))
+                            chapter_counter += 1
+                            chapters.append(Chapter(
+                                id=_slugify(current_dyn_ch_title),
+                                chapter_number=chapter_counter,
+                                title=current_dyn_ch_title,
+                                content=all_blocks,
+                                word_count=word_count,
+                            ))
+                            all_blocks = []
+                        current_dyn_ch_title = new_ch_title
+                    
                     block = _build_content_block(rb)
                     if block is not None:
                         all_blocks.append(block)
@@ -508,14 +600,16 @@ async def normalize_with_ai(
                     if para:
                         all_blocks.append(ParagraphBlock(type="paragraph", text=para))
 
-        word_count = sum(len(b.text.split()) for b in all_blocks if hasattr(b, "text"))
-        chapters.append(Chapter(
-            id=_slugify(title),
-            chapter_number=1,
-            title=title,
-            content=all_blocks,
-            word_count=word_count,
-        ))
+        if all_blocks:
+            word_count = sum(len(b.text.split()) for b in all_blocks if hasattr(b, "text"))
+            chapter_counter += 1
+            chapters.append(Chapter(
+                id=_slugify(current_dyn_ch_title),
+                chapter_number=chapter_counter,
+                title=current_dyn_ch_title,
+                content=all_blocks,
+                word_count=word_count,
+            ))
 
     update_job(job_id, progress=88, message="Building final DocumentAST…")
 

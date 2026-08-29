@@ -139,47 +139,72 @@ async def _parse_docx(file_path: str, job_id: str) -> DocumentAST:
 
     except Exception as e:
         logger.warning("AI normalization failed: %s — falling back to heuristic parser.", e)
-        return _heuristic_docx_parse(result, job_id)
+        return _heuristic_docx_parse(result, job_id, tagged)
 
 
-def _heuristic_docx_parse(result, job_id: str) -> DocumentAST:
+def _heuristic_docx_parse(result, job_id: str, tagged_text: str = "") -> DocumentAST:
     """Fallback: simple style-based DOCX parser (no AI)."""
-    from app.services.extractors.docx_extractor import ExtractedParagraph
-
-    update_job(job_id, progress=75, message="Running heuristic parser…")
+    update_job(job_id, progress=75, message="Running heuristic parser.")
 
     chapters: list[Chapter] = []
     current_chapter: Chapter | None = None
     chapter_counter = 0
     blocks = []
+    
+    # If we have tagged text, use it to detect chapters better
+    lines = tagged_text.split('\n') if tagged_text else []
+    
+    if not lines:
+        for p in result.paragraphs:
+            text = p.text.strip()
+            if text:
+                if "heading 1" in p.style.lower() or "title" in p.style.lower():
+                    lines.append(f"[HEADING1] {text}")
+                elif "heading 2" in p.style.lower():
+                    lines.append(f"[HEADING2] {text}")
+                elif p.is_bold_line:
+                    lines.append(f"[BOLD] {text}")
+                else:
+                    lines.append(f"[PARA] {text}")
 
-    for p in result.paragraphs:
-        style = p.style.lower()
-        text = p.text.strip()
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        is_heading1 = line.startswith("[HEADING1]")
+        is_bold = line.startswith("[BOLD]")
+        is_heading = is_heading1 or is_bold
+        text = line.replace("[HEADING1]", "").replace("[HEADING2]", "").replace("[HEADING3]", "").replace("[BOLD]", "").replace("[PARA]", "").replace("[LIST_ITEM]", "").strip()
+        
         if not text:
             continue
-
-        # Check for chapter boundaries
-        is_heading_1 = "heading 1" in style
-        is_chapter_text = text.lower().startswith("chapter ") or text.lower().startswith("module ")
+            
+        lower_text = text.lower()
+        is_chapter_kw = lower_text.startswith("chapter ") or lower_text.startswith("module ")
         
-        # We start a new chapter if it's heading 1, starts with "Chapter X", or if it's a short ALL CAPS line and we have no chapters yet
-        if is_heading_1 or is_chapter_text or (not chapters and text.isupper() and len(text.split()) < 10):
-            if current_chapter is not None:
-                current_chapter.content = blocks
+        # Split chapter if it's HEADING1, or a BOLD line that has 'chapter/module' in the name,
+        # or it's the very first heading we've seen.
+        is_chapter = is_heading1 or (is_bold and is_chapter_kw) or (is_heading and current_chapter is None and len(text) < 50)
+        
+        if is_chapter:
+            if current_chapter is not None or blocks:
+                if current_chapter is None:
+                    current_chapter = Chapter(chapter_number=1, title=result.title, content=blocks)
+                else:
+                    current_chapter.content = blocks
                 chapters.append(current_chapter)
+            
             chapter_counter += 1
             current_chapter = Chapter(chapter_number=chapter_counter, title=text, content=[])
             blocks = []
-            
-        elif "heading 2" in style or (p.is_bold_line and len(text.split()) <= 12 and not text.endswith('.')):
-            blocks.append(Heading2Block(type="heading2", text=text))
-            
-        elif "heading 3" in style:
-            blocks.append(Heading3Block(type="heading3", text=text))
-            
         else:
-            blocks.append(ParagraphBlock(type="paragraph", text=text))
+            if line.startswith("[HEADING2]") or line.startswith("[HEADING3]"):
+                blocks.append(Heading2Block(type="heading2", text=text))
+            elif line.startswith("[BOLD]"):
+                blocks.append(ParagraphBlock(type="paragraph", text=f"**{text}**"))
+            else:
+                blocks.append(ParagraphBlock(type="paragraph", text=text))
 
     if current_chapter is not None:
         current_chapter.content = blocks
@@ -247,20 +272,71 @@ async def _parse_pdf(file_path: str, job_id: str) -> DocumentAST:
         )
 
     except Exception as e:
-        logger.warning("AI normalization failed: %s — falling back to heuristic parser.", e)
-        return _heuristic_pdf_parse(result, job_id)
+        logger.warning("AI normalization failed: %s - falling back to heuristic parser.", e)
+        return _heuristic_pdf_parse(result, job_id, tagged)
 
 
-def _heuristic_pdf_parse(result, job_id: str) -> DocumentAST:
+def _heuristic_pdf_parse(result, job_id: str, tagged_text: str = "") -> DocumentAST:
     """Fallback: simple paragraph-based PDF parser (no AI)."""
-    update_job(job_id, progress=75, message="Running heuristic parser…")
+    update_job(job_id, progress=75, message="Running heuristic parser.")
 
-    blocks: list[ParagraphBlock] = []
-    for page in result.pages:
-        for para in page.text.split("\n\n"):
-            cleaned = para.strip()
-            if cleaned:
-                blocks.append(ParagraphBlock(type="paragraph", text=cleaned))
+    chapters: list[Chapter] = []
+    current_chapter: Chapter | None = None
+    chapter_counter = 0
+    blocks = []
+    
+    # If we have tagged text, use it to detect chapters better
+    lines = tagged_text.split('\n') if tagged_text else []
+    
+    if not lines:
+        for page in result.pages:
+            for para in page.text.split("\n\n"):
+                cleaned = para.strip()
+                if cleaned:
+                    lines.append(f"[PARA] {cleaned}")
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        is_heading1 = line.startswith("[HEADING1]")
+        is_heading_cand = line.startswith("[HEADING_CANDIDATE]")
+        is_heading = is_heading1 or is_heading_cand
+        text = line.replace("[HEADING_CANDIDATE]", "").replace("[HEADING1]", "").replace("[PARA]", "").replace("[LIST_ITEM]", "").strip()
+        
+        if not text:
+            continue
+            
+        lower_text = text.lower()
+        is_chapter_kw = lower_text.startswith("chapter ") or lower_text.startswith("module ")
+        
+        # Split chapter if it's HEADING1, or a HEADING_CANDIDATE that has 'chapter/module' in the name,
+        # or it's the very first heading we've seen.
+        is_chapter = is_heading1 or (is_heading_cand and is_chapter_kw) or (is_heading and current_chapter is None and len(text) < 50)
+        
+        if is_chapter:
+            if current_chapter is not None or blocks:
+                if current_chapter is None:
+                    current_chapter = Chapter(chapter_number=1, title=result.title, content=blocks)
+                else:
+                    current_chapter.content = blocks
+                chapters.append(current_chapter)
+            
+            chapter_counter += 1
+            current_chapter = Chapter(chapter_number=chapter_counter, title=text, content=[])
+            blocks = []
+        else:
+            if is_heading:
+                blocks.append(Heading2Block(type="heading2", text=text))
+            else:
+                blocks.append(ParagraphBlock(type="paragraph", text=text))
+
+    if current_chapter is not None:
+        current_chapter.content = blocks
+        chapters.append(current_chapter)
+    elif blocks:
+        chapters.append(Chapter(chapter_number=1, title=result.title, content=blocks))
 
     return DocumentAST(
         metadata=BookMetadata(
@@ -270,7 +346,7 @@ def _heuristic_pdf_parse(result, job_id: str) -> DocumentAST:
             trim_size=TrimSize.medium,
         ),
         front_matter=FrontMatter(),
-        chapters=[Chapter(chapter_number=1, title=result.title, content=blocks)],
+        chapters=chapters,
         compilation_settings=CompilationSettings(),
     )
 
