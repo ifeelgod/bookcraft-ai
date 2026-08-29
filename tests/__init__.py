@@ -1,0 +1,3 @@
+"""
+BookCraft AI Test Suite
+"""

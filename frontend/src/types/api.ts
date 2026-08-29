@@ -197,6 +197,7 @@ export interface BookMetadata {
   language?: string;
   keywords?: string[];
   cover_image_url?: string;
+  is_demo?: boolean;
 }
 
 export interface CompilationSettings {
@@ -218,12 +219,31 @@ export interface DocumentAST {
 }
 
 // ────────────────────────────────────────────────────────────
-// API Response Types
+// Lead & API Response Types
 // ────────────────────────────────────────────────────────────
+
+export interface LeadFormData {
+  name: string;
+  email: string;
+  marketingConsent: boolean;
+  tier?: string;
+}
+
+export interface DownloadUrls {
+  pdf?: string;
+  docx?: string;
+  md?: string;
+  epub?: string;
+  [key: string]: string | undefined;
+}
 
 export interface UploadResponse {
   job_id: string;
+  lead_id?: string;
+  tier?: string;
   status: string;
+  is_truncated?: boolean;
+  preflight_message?: string;
   message: string;
   file_name: string;
   size_bytes: number;
@@ -234,6 +254,7 @@ export interface CompileResponse {
   status: string;
   message: string;
   book_title: string;
+  download_urls?: DownloadUrls;
 }
 
 export interface JobStatus {
@@ -244,7 +265,104 @@ export interface JobStatus {
   file_name?: string;
   created_at: string;
   updated_at: string;
-  result?: Record<string, unknown>;
+  result?: {
+    output_path?: string;
+    download_url?: string;
+    download_urls?: DownloadUrls;
+    formats?: Record<string, { path: string; url: string; size_bytes: number }>;
+    ast?: DocumentAST;
+    [key: string]: unknown;
+  };
   error?: string;
   download_url?: string;
+  download_urls?: DownloadUrls;
 }
+
+// ────────────────────────────────────────────────────────────
+// Payment & Auth Types
+// ────────────────────────────────────────────────────────────
+
+export interface PricingTierFeature {
+  text: string;
+  included: boolean;
+}
+
+export interface PricingTierInfo {
+  id: string;
+  name: string;
+  price_cents: number;
+  price_display: string;
+  period: string;
+  popular?: boolean;
+  features: string[];
+}
+
+export interface PaymentConfigResponse {
+  mode: string;
+  stripe: {
+    enabled: boolean;
+    publishable_key: string;
+    price_pro_pass: string;
+    price_author_pro: string;
+  };
+  paypal: {
+    enabled: boolean;
+    client_id: string;
+    environment: string;
+    price_pro_pass: string;
+    price_author_pro: string;
+  };
+  tiers: PricingTierInfo[];
+}
+
+export interface CheckoutRequestPayload {
+  provider: 'stripe' | 'paypal';
+  tier: string;
+  lead_email?: string;
+  lead_name?: string;
+  success_url?: string;
+  cancel_url?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CheckoutResult {
+  provider: string;
+  session_id: string;
+  checkout_url: string;
+  amount_cents: number;
+  currency: string;
+  tier: string;
+  mode?: string;
+}
+
+export interface VerifyPaymentPayload {
+  provider: 'stripe' | 'paypal';
+  session_id?: string;
+  order_id?: string;
+  lead_email?: string;
+  lead_name?: string;
+  tier?: string;
+}
+
+export interface VerifyPaymentResult {
+  success: boolean;
+  status: string;
+  access_token: string;
+  tier: string;
+  email?: string;
+  lead_id?: string;
+  payment_id?: string;
+  transaction_id?: string;
+  amount_cents?: number;
+  currency?: string;
+  expires_at?: string;
+}
+
+export interface AuthStateData {
+  token: string | null;
+  tier: 'demo' | 'pro' | 'pro_pass' | 'author_pro' | 'tier_1_pass' | 'tier_2_monthly' | 'tier_3_monthly' | 'tier_3_annual';
+  email: string | null;
+  name: string | null;
+  expiresAt: string | null;
+}
+

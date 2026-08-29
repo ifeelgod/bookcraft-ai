@@ -1,12 +1,15 @@
 'use client';
 
-import { BookOpen, Settings, Download, ArrowLeft, Loader2, ChevronLeft, ChevronRight, FileText, Upload } from 'lucide-react';
+import { BookOpen, Settings, Download, ArrowLeft, Loader2, ChevronLeft, ChevronRight, FileText, Upload, Sparkles, Crown, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { compileDocument, pollJobStatus, getAst } from '@/lib/api';
-import type { DocumentAST, JobStatus } from '@/types/api';
+import { useAuth } from '@/lib/authStore';
+import { CheckoutModal } from '@/components/CheckoutModal';
+import type { DocumentAST, JobStatus, DownloadUrls } from '@/types/api';
+import MultiFormatDownloadBar from '@/components/MultiFormatDownloadBar';
 
 import dynamic from 'next/dynamic';
 
@@ -62,17 +65,18 @@ const PRESETS: Record<string, { font_family: any; font_size: number; line_height
 function EditorContent() {
   const searchParams = useSearchParams();
   const initialJobId = searchParams.get('jobId');
+  const { isPro, tier, token } = useAuth();
 
   const [ast, setAst] = useState<DocumentAST | null>(null);
   const [preset, setPreset] = useState<string>('Literary Classic');
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   const [loadingAst, setLoadingAst] = useState<boolean>(true);
   const [compileState, setCompileState] = useState<CompileState>('idle');
   const [progress, setProgress] = useState(0);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadUrls, setDownloadUrls] = useState<DownloadUrls | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
-
-
 
   useEffect(() => {
     if (!initialJobId) {
@@ -106,12 +110,15 @@ function EditorContent() {
     setErrorMsg('');
 
     try {
-      const res = await compileDocument(astToCompile);
+      const res = await compileDocument(astToCompile, token || undefined, isPro ? 'pro' : 'demo');
       await pollJobStatus(res.job_id, (status: JobStatus) => {
         setProgress(status.progress);
         if (status.status === 'completed') {
           setCompileState('done');
-          setDownloadUrl(status.result?.download_url as string ?? null);
+          const pdfUrl = (status.download_urls?.pdf ?? status.result?.download_urls?.pdf ?? status.download_url ?? status.result?.download_url) as string ?? null;
+          const urls = (status.download_urls ?? status.result?.download_urls ?? (pdfUrl ? { pdf: pdfUrl } : null)) as DownloadUrls | null;
+          setDownloadUrl(pdfUrl);
+          setDownloadUrls(urls);
         } else if (status.status === 'failed') {
           setCompileState('error');
           setErrorMsg(status.error ?? 'Unknown error');
@@ -130,8 +137,6 @@ function EditorContent() {
     handleCompile(newAst); // Auto-compile on change
   };
 
-
-
   const chapters = ast?.chapters || [];
 
   return (
@@ -144,23 +149,52 @@ function EditorContent() {
           </Link>
           <BookOpen className="h-6 w-6 text-brand-600" />
           <span className="text-xl font-bold text-gray-900 tracking-tight">BookCraft AI</span>
+          {isPro ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-600 text-xs font-semibold">
+              <Crown className="w-3.5 h-3.5 text-amber-500" />
+              <span>{tier?.toUpperCase()} TIER</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-full text-slate-600 text-xs">
+              <span>Demo (15-Page Limit)</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
+          {!isPro && (
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 rounded-lg shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Upgrade to Pro ($19)</span>
+            </button>
+          )}
           <Link href="/upload" className="btn-secondary text-sm flex items-center gap-2">
             <Upload className="h-4 w-4" /> Upload New File
           </Link>
-          {compileState === 'done' && downloadUrl && (
+          {compileState === 'done' && (
             <div className="flex items-center gap-2">
-              <a href={downloadUrl} className="btn-secondary text-sm flex items-center gap-2" download="print_ready.pdf">
-                <Download className="h-4 w-4" /> Print-Ready PDF
-              </a>
-              <a href={downloadUrl} className="btn-primary text-sm flex items-center gap-2" download="interactive.pdf">
-                <Download className="h-4 w-4" /> Interactive PDF
-              </a>
+              <MultiFormatDownloadBar downloadUrls={downloadUrls} bookTitle={ast?.metadata?.title} />
+              {downloadUrl && (
+                <a href={downloadUrl} className="btn-primary text-sm flex items-center gap-2" download={`${ast?.metadata?.title || 'book'}.pdf`}>
+                  <Download className="h-4 w-4" /> View PDF
+                </a>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Checkout Upgrade Modal */}
+      <CheckoutModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={() => {
+          toast.success('Pro Tier activated! Compiling full manuscript...');
+          if (ast) handleCompile(ast);
+        }}
+      />
 
       {/* Progress bar */}
       {compileState === 'compiling' && (

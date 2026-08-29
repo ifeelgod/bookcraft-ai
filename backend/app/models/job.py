@@ -34,6 +34,7 @@ class JobRecord(BaseModel):
     # Output info
     output_path: Optional[str] = None
     download_url: Optional[str] = None
+    download_urls: Optional[Dict[str, str]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +64,7 @@ def update_job(
     error: Optional[str] = None,
     output_path: Optional[str] = None,
     download_url: Optional[str] = None,
+    download_urls: Optional[Dict[str, str]] = None,
 ) -> Optional[JobRecord]:
     job = _jobs.get(job_id)
     if not job:
@@ -81,6 +83,8 @@ def update_job(
         job.output_path = output_path
     if download_url is not None:
         job.download_url = download_url
+    if download_urls is not None:
+        job.download_urls = download_urls
     job.updated_at = datetime.now(timezone.utc)
     return job
 

@@ -1,0 +1,135 @@
+{
+  "metadata": {
+    "title": "The Art of Modern Bookcraft",
+    "subtitle": "A Comprehensive Guide to AI-Assisted Typesetting",
+    "author": "Dr. Eleanor Vance",
+    "co_authors": ["Marcus Vance", "Lyra Valerius"],
+    "genre": "technical",
+    "trim_size": "6x9",
+    "isbn": "978-0-123456-78-9",
+    "publisher": "Craftsman Press",
+    "published_year": 2026,
+    "edition": "First Edition",
+    "language": "en",
+    "keywords": ["typography", "publishing", "typst", "compilation"]
+  },
+  "front_matter": {
+    "title_page": {
+      "enabled": true,
+      "display_title": "The Art of Modern Bookcraft",
+      "display_subtitle": "A Comprehensive Guide to AI-Assisted Typesetting",
+      "display_author": "Dr. Eleanor Vance",
+      "display_publisher": "Craftsman Press"
+    },
+    "copyright": {
+      "enabled": true,
+      "year": 2026,
+      "holder": "Dr. Eleanor Vance",
+      "statement": "All rights reserved. No part of this book may be reproduced without written permission.",
+      "rights_reserved": true,
+      "printed_in": "United States of America"
+    },
+    "table_of_contents": {
+      "enabled": true,
+      "title": "Table of Contents",
+      "include_subheadings": true,
+      "max_depth": 2
+    },
+    "dedication": {
+      "enabled": true,
+      "text": "For the digital scribes and algorithmic typesetters who bridge human words and timeless pages."
+    }
+  },
+  "chapters": [
+    {
+      "chapter_number": 1,
+      "title": "Foundations of Digital Typography",
+      "subtitle": "From Lead Movable Type to Dynamic ASTs",
+      "epigraph": {
+        "text": "Typography is the craft of endowing human language with a durable visual form.",
+        "attribution": "Robert Bringhurst"
+      },
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Digital typesetting represents the culmination of five centuries of printing tradition. By abstracting prose into structured AST representations, authors maintain semantic clarity while engines handle micro-typographic nuances.",
+          "indent": true,
+          "align": "justify"
+        },
+        {
+          "type": "heading2",
+          "text": "The Grid System and Golden Ratios",
+          "numbering": false
+        },
+        {
+          "type": "paragraph",
+          "text": "Proportional page margins and baseline grids establish a visual rhythm that guides the reader's eye effortlessly across long reading sessions.",
+          "indent": true,
+          "align": "justify"
+        },
+        {
+          "type": "callout",
+          "variant": "info",
+          "title": "Typesetting Tip",
+          "text": "Optimal line lengths for reading comfort range between 45 and 75 characters per line (10 to 12 words)."
+        },
+        {
+          "type": "pullquote",
+          "text": "A book's interior design should be transparent to the reader, elevating the text without demanding unearned attention.",
+          "attribution": "Master Typographer",
+          "align": "center"
+        }
+      ],
+      "word_count": 450
+    },
+    {
+      "chapter_number": 2,
+      "title": "Multi-Format Compilation Engines",
+      "subtitle": "Generating PDF, DOCX, MD, and EPUB in Parallel",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Modern publishing workflows cannot be restricted to a single distribution channel. Writers require high-resolution PDF for print, EPUB for digital readers, and editable DOCX and Markdown for editorial revisions.",
+          "indent": true,
+          "align": "justify"
+        },
+        {
+          "type": "table",
+          "caption": "Format Matrix Comparison",
+          "headers": ["Format", "Target Medium", "Editable", "Visual Fidelity"],
+          "rows": [
+            ["PDF", "Print / Proofing", "No", "Exact Pixel-Perfect"],
+            ["DOCX", "Editorial / Track Changes", "Yes", "High"],
+            ["Markdown", "Version Control / Plaintext", "Yes", "Semantic"],
+            ["EPUB", "E-Readers / Tablets", "Reflowable", "Dynamic"]
+          ],
+          "striped": true
+        },
+        {
+          "type": "callout",
+          "variant": "success",
+          "title": "Efficiency Gain",
+          "text": "Single-source compiling reduces formatting divergence across editions to zero."
+        }
+      ],
+      "word_count": 520
+    }
+  ],
+  "compilation_settings": {
+    "font_family": "Garamond",
+    "font_size": 11,
+    "line_height": 1.5,
+    "margins": {
+      "top": 1.0,
+      "bottom": 1.0,
+      "inner": 1.25,
+      "outer": 0.75
+    },
+    "chapter_start_page": "recto",
+    "header_footer": {
+      "show_page_numbers": true,
+      "show_chapter_title": true,
+      "show_book_title": true
+    }
+  }
+}

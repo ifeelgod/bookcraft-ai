@@ -32,6 +32,10 @@ async def get_status(job_id: str):
         response["result"] = job.result
         if job.download_url:
             response["download_url"] = job.download_url
+        if job.download_urls:
+            response["download_urls"] = job.download_urls
+        elif job.download_url:
+            response["download_urls"] = {"pdf": job.download_url}
 
     if job.status == "failed":
         response["error"] = job.error

@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from app.core.config import settings
 from app.api.router import api_router
+from app.db.base import init_db, close_db
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -67,9 +68,10 @@ if frontend_dist.exists():
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    """Create required directories on startup."""
+    """Create required directories and initialize database on startup."""
     Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
     Path(settings.OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+    await init_db()
     logger.info("BookCraft AI backend started.")
     logger.info(f"Upload dir : {Path(settings.UPLOAD_DIR).resolve()}")
     logger.info(f"Output dir : {Path(settings.OUTPUT_DIR).resolve()}")
@@ -77,6 +79,7 @@ async def on_startup() -> None:
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
+    await close_db()
     logger.info("BookCraft AI backend shutting down.")
 
 
