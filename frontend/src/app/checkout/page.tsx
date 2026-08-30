@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import toast from 'react-hot-toast';
 import {
   ArrowLeft,
   Check,
@@ -13,14 +15,71 @@ import {
   ShieldCheck,
   Sparkles,
   Zap,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { CheckoutModal } from '@/components/CheckoutModal';
 import { useAuth } from '@/lib/authStore';
+import { verifyPaymentSession } from '@/lib/api';
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const { isPro, tier, email, logout } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [targetTier, setTargetTier] = useState<'tier_1_pass' | 'tier_2_monthly' | 'tier_3_monthly' | 'tier_3_annual'>('tier_1_pass');
+
+  const searchParams = useSearchParams();
+  const success = searchParams.get('success');
+  const provider = searchParams.get('provider');
+  const token = searchParams.get('token');
+  const sessionId = searchParams.get('session_id');
+  const queryTier = searchParams.get('tier');
+  const queryEmail = searchParams.get('email');
+  const queryName = searchParams.get('name');
+
+  const [verifying, setVerifying] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  const { login } = useAuth();
+
+  useEffect(() => {
+    if (success === 'true' && provider) {
+      const orderId = token || sessionId;
+      if (!orderId) return;
+
+      const runVerification = async () => {
+        setVerifying(true);
+        setVerifyStatus('loading');
+        try {
+          const res = await verifyPaymentSession({
+            provider: provider as 'stripe' | 'paypal',
+            order_id: provider === 'paypal' ? orderId : undefined,
+            session_id: provider === 'stripe' ? orderId : undefined,
+            lead_email: queryEmail || undefined,
+            lead_name: queryName || undefined,
+            tier: queryTier || 'tier_1_pass',
+          });
+
+          if (res.success && res.access_token) {
+            login(res.access_token, res.tier, res.email || queryEmail || '', queryName || '', res.expires_at || undefined);
+            setVerifyStatus('success');
+            toast.success('Payment verified! Your Pro access is now active.');
+          } else {
+            setVerifyStatus('error');
+            setVerifyError('Verification response was unsuccessful.');
+          }
+        } catch (err: any) {
+          console.error(err);
+          setVerifyStatus('error');
+          setVerifyError(err.message || 'Failed to verify transaction.');
+        } finally {
+          setVerifying(false);
+        }
+      };
+
+      runVerification();
+    }
+  }, [success, provider, token, sessionId, queryTier, queryEmail, queryName]);
 
   const openCheckout = (tierName: 'tier_1_pass' | 'tier_2_monthly' | 'tier_3_monthly' | 'tier_3_annual') => {
     setTargetTier(tierName);
@@ -356,6 +415,72 @@ export default function CheckoutPage() {
         onClose={() => setModalOpen(false)}
         initialTier={targetTier}
       />
+
+      {/* Verification Overlays */}
+      {verifyStatus === 'loading' && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md text-white">
+          <Loader2 className="w-12 h-12 text-amber-500 animate-spin mb-4" />
+          <h2 className="text-2xl font-bold">Finalizing your payment...</h2>
+          <p className="text-slate-400 mt-2">Communicating with the payment provider to secure your access.</p>
+        </div>
+      )}
+
+      {verifyStatus === 'success' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm">
+          <div className="relative w-full max-w-md overflow-hidden bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 text-center text-slate-100 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 mb-6 mx-auto">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+            <h2 className="text-3xl font-extrabold text-white mb-2">Upgrade Complete!</h2>
+            <p className="text-slate-300 mb-6">
+              Thank you! Your transaction has been successfully verified. Your account has been upgraded to the{' '}
+              <span className="text-amber-400 font-bold uppercase">{tier?.toUpperCase()}</span> tier.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+              <Link
+                href="/editor"
+                className="flex-1 py-3 px-6 rounded-xl font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 transition-all flex items-center justify-center gap-2"
+              >
+                <span>Go to Editor</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {verifyStatus === 'error' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm">
+          <div className="relative w-full max-w-md overflow-hidden bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 text-center text-slate-100 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20 mb-6 mx-auto">
+              <X className="w-8 h-8" />
+            </div>
+            <h2 className="text-3xl font-extrabold text-white mb-2">Verification Failed</h2>
+            <p className="text-red-400 text-sm mb-4">{verifyError || 'An error occurred during verification.'}</p>
+            <p className="text-slate-400 text-xs mb-6">
+              If payment was captured on PayPal, please check your email or contact support with the transaction ID.
+            </p>
+            <div className="flex gap-4 w-full">
+              <button
+                onClick={() => {
+                  setVerifyStatus('idle');
+                  window.history.replaceState(null, '', window.location.pathname);
+                }}
+                className="flex-1 py-3 px-6 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-white transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

@@ -67,12 +67,17 @@ export function CheckoutModal({
         return;
       }
 
+      const successUrl = `${window.location.origin}/checkout?success=true&provider=${provider}&tier=${selectedTier}&email=${encodeURIComponent(userEmail)}&name=${encodeURIComponent(userName)}`;
+      const cancelUrl = `${window.location.origin}/checkout?cancelled=true`;
+
       // Live / Sandbox Checkout
       const checkoutRes = await createCheckoutSession({
         provider: provider as 'stripe' | 'paypal',
         tier: selectedTier,
         lead_email: userEmail,
         lead_name: userName,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
       });
 
       if (checkoutRes.checkout_url) {
