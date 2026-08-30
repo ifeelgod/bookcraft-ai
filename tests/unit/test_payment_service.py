@@ -16,12 +16,13 @@ def create_test_token(email: str, tier: str = "pro", expires_delta: timedelta = 
     """Helper to generate signed JWT tokens for test cases."""
     now = datetime.now(timezone.utc)
     expire = now + expires_delta
+    import uuid
     payload = {
         "sub": email,
         "tier": tier,
         "iat": int(now.timestamp()),
         "exp": int(expire.timestamp()),
-        "jti": f"tok_{int(now.timestamp())}_{email[:4]}",
+        "jti": f"tok_{int(now.timestamp())}_{uuid.uuid4().hex[:8]}",
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 

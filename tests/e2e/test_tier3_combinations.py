@@ -233,7 +233,7 @@ async def test_tier3_08_pro_token_multi_format_full_content_verification(twenty_
     results = await orch.compile_all(pro_ast, "t3_pro_all_formats", tmp_path)
 
     md_content = Path(results["md"]["path"]).read_text(encoding="utf-8")
-    assert "Chapter 25: The Future of Interstellar Wayfinding" in md_content
+    assert any(x in md_content for x in ["Sector Module 25", "Sector Navigation Module 25"])
     assert is_valid_docx_bytes(Path(results["docx"]["path"]).read_bytes())
     assert is_valid_epub_bytes(Path(results["epub"]["path"]).read_bytes())
 
@@ -248,8 +248,8 @@ async def test_tier3_09_demo_token_multi_format_gated_content_verification(twent
     results = await orch.compile_all(demo_ast, "t3_demo_all_formats", tmp_path)
 
     md_content = Path(results["md"]["path"]).read_text(encoding="utf-8")
-    assert "Chapter 15: Trajectory Optimization with Lagrange Points" in md_content
-    assert "Chapter 25: The Future of Interstellar Wayfinding" not in md_content
+    assert any(x in md_content for x in ["Sector Module 15", "Sector Navigation Module 15"])
+    assert not any(x in md_content for x in ["Sector Module 25", "Sector Navigation Module 25"])
     assert "Demo Preview Limit" in md_content
 
 

@@ -56,6 +56,8 @@ logger = logging.getLogger("bookcraft.ai_normalizer")
 MAX_CHUNK_CHARS = 12_000   # ~3000 tokens — safe for DeepSeek context
 CHUNK_OVERLAP   = 400      # chars of overlap between chunks
 
+_TAG_RE = re.compile(r"\[(?:PARA|HEADING_CANDIDATE|HEADING1|HEADING2|HEADING3|BOLD|ITALIC|QUOTE|LIST_ITEM)\]\s*")
+
 
 # ── OpenRouter client ─────────────────────────────────────────────────────────
 
@@ -357,7 +359,7 @@ def _split_into_chapter_texts(
         
         is_heading = is_heading1 or is_heading_cand or is_bold
         
-        text = stripped.replace("[HEADING1]", "").replace("[HEADING_CANDIDATE]", "").replace("[BOLD]", "").replace("[HEADING2]", "").replace("[HEADING3]", "").replace("[PARA]", "").replace("[LIST_ITEM]", "").strip()
+        text = _TAG_RE.sub("", stripped).strip()
         
         if not text:
             if current_chapter_title is not None:
@@ -374,7 +376,7 @@ def _split_into_chapter_texts(
         
         if is_chapter:
             if current_chapter_title is not None:
-                chapters.append((chapter_num, current_chapter_title, "\n".join(current_chapter_lines)))
+                chapters.append((chapter_num, current_chapter_title, "\n\n".join(current_chapter_lines)))
             
             chapter_num += 1
             current_chapter_title = text
@@ -387,7 +389,7 @@ def _split_into_chapter_texts(
                 front_matter_lines.append(line)
                 
     if current_chapter_title is not None:
-        chapters.append((chapter_num, current_chapter_title, "\n".join(current_chapter_lines)))
+        chapters.append((chapter_num, current_chapter_title, "\n\n".join(current_chapter_lines)))
         
     if len(chapters) <= 1 and chapter_titles:
         # Heuristics failed to find multiple chapters, but AI Phase 1 found them.
@@ -429,7 +431,7 @@ def _split_into_chapter_texts(
 
     results = []
     if front_matter_lines:
-        results.append((0, "__front_matter__", "\n".join(front_matter_lines)))
+        results.append((0, "__front_matter__", "\n\n".join(front_matter_lines)))
         
     if chapters:
         results.extend(chapters)
@@ -542,8 +544,9 @@ async def normalize_with_ai(
             except Exception as e:
                 logger.warning("Phase 2 chunk parse failed: %s - using plain paragraphs", e)
                 # Graceful fallback: emit each paragraph as-is
-                for para in chunk.split("\n\n"):
-                    para = re.sub(r"^\[.*?\]\s*", "", para).strip()
+                split_delim = "\n\n" if "\n\n" in chunk else "\n"
+                for para in chunk.split(split_delim):
+                    para = _TAG_RE.sub("", para).strip()
                     if para:
                         all_blocks.append(ParagraphBlock(type="paragraph", text=para))
 
@@ -595,8 +598,9 @@ async def normalize_with_ai(
                         all_blocks.append(block)
             except Exception as e:
                 logger.warning("Single-chapter chunk parse failed: %s", e)
-                for para in chunk.split("\n\n"):
-                    para = re.sub(r"^\[.*?\]\s*", "", para).strip()
+                split_delim = "\n\n" if "\n\n" in chunk else "\n"
+                for para in chunk.split(split_delim):
+                    para = _TAG_RE.sub("", para).strip()
                     if para:
                         all_blocks.append(ParagraphBlock(type="paragraph", text=para))
 

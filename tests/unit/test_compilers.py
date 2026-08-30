@@ -48,8 +48,7 @@ from tests.conftest import (
 )
 
 
-@pytest.fixture
-def rich_ast() -> DocumentAST:
+def get_rich_ast() -> DocumentAST:
     """DocumentAST containing every block type and front matter feature."""
     return DocumentAST(
         metadata=BookMetadata(
@@ -203,6 +202,11 @@ def rich_ast() -> DocumentAST:
             line_height=1.5,
         ),
     )
+
+
+@pytest.fixture
+def rich_ast() -> DocumentAST:
+    return get_rich_ast()
 
 
 @pytest.mark.asyncio

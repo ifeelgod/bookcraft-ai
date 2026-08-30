@@ -30,6 +30,8 @@ from app.models.ast_cache import store_ast
 
 logger = logging.getLogger("bookcraft.parser")
 
+_TAG_RE = re.compile(r"\[(?:PARA|HEADING_CANDIDATE|HEADING1|HEADING2|HEADING3|BOLD|ITALIC|QUOTE|LIST_ITEM)\]\s*")
+
 
 class ParseError(Exception):
     """Raised when a document cannot be parsed."""
@@ -175,7 +177,7 @@ def _heuristic_docx_parse(result, job_id: str, tagged_text: str = "") -> Documen
         is_heading1 = line.startswith("[HEADING1]")
         is_bold = line.startswith("[BOLD]")
         is_heading = is_heading1 or is_bold
-        text = line.replace("[HEADING1]", "").replace("[HEADING2]", "").replace("[HEADING3]", "").replace("[BOLD]", "").replace("[PARA]", "").replace("[LIST_ITEM]", "").strip()
+        text = _TAG_RE.sub("", line).strip()
         
         if not text:
             continue
@@ -303,7 +305,7 @@ def _heuristic_pdf_parse(result, job_id: str, tagged_text: str = "") -> Document
         is_heading1 = line.startswith("[HEADING1]")
         is_heading_cand = line.startswith("[HEADING_CANDIDATE]")
         is_heading = is_heading1 or is_heading_cand
-        text = line.replace("[HEADING_CANDIDATE]", "").replace("[HEADING1]", "").replace("[PARA]", "").replace("[LIST_ITEM]", "").strip()
+        text = _TAG_RE.sub("", line).strip()
         
         if not text:
             continue

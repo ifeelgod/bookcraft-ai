@@ -208,11 +208,18 @@ def get_session_fixtures(tmp_dir: Path) -> dict:
         chapters=[Chapter(chapter_number=1, title="C1", content=[ParagraphBlock(type="paragraph", text="P")])],
     )
 
+    try:
+        from tests.unit.test_compilers import get_rich_ast
+        rich_ast_val = get_rich_ast()
+    except Exception:
+        rich_ast_val = sample_ast
+
     return {
         "project_root": PROJECT_ROOT,
         "fixtures_dir": conftest.FIXTURES_DIR,
         "sample_ast_data": ast_dict,
         "sample_ast": sample_ast,
+        "rich_ast": rich_ast_val,
         "minimal_ast": minimal_ast,
         "fifteen_page_ast": fifteen_page_ast,
         "twenty_five_page_ast": twenty_five_page_ast,

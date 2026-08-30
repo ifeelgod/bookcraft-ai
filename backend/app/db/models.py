@@ -108,6 +108,16 @@ class Lead(Base):
         lazy="selectin",
     )
 
+    def __init__(self, **kwargs):
+        kwargs.setdefault("marketing_consent", True)
+        kwargs.setdefault("tier", "demo")
+        kwargs.setdefault("status", "active")
+        kwargs.setdefault("source", "demo_upload")
+        kwargs.setdefault("email_marketing_status", "pending")
+        kwargs.setdefault("extra_metadata", {})
+        kwargs.setdefault("is_truncated", False)
+        super().__init__(**kwargs)
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert Lead model instance to JSON-serializable dictionary."""
         return {
